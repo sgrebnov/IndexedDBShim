@@ -1,0 +1,24 @@
+ul {
+	font-size: small;
+	font-style: italic;
+	font-family: monospace;
+}
+
+#log {
+	color: gray;
+}
+
+#info {
+	font-weight: bold;
+	color: blue;
+}
+
+#warn {
+	font-weight: bold;
+	color: orange;
+}
+
+#error {
+	font-weight: bold;
+	color: red
+}
