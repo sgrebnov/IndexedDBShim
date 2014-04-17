@@ -13,6 +13,11 @@
 	</script>
 	<script src="js/testApp.js"></script>
 	<script src="dist/IndexedDBShim.js"></script>
+	<script type="text/javascript">
+		window.shimIndexedDB.__useShim();
+		//window.shimIndexedDB.__debug(true);
+	</script>
+
 	<h1>Testing IndexedDB</h1>
 	Log level:
 	<select id="loglevel" onchange="setLogLevel()">
@@ -21,10 +26,12 @@
 		<option value="warn">warn</option>
 		<option value="error">error</option>
 	</select>
-	Repetitions count <input type="number" id="repetitions" value="100"><br>
+	Repetitions count <input type="number" id="repetitions" value="5"><br>
 	<button onclick="simpleTest()">Start simple test</button><br>
 	<button onclick="complexTest()">Start complex test</button><br>
 	<button onclick="readWriteTest()">Start read/write test</button><br>
+	<button onclick="openDatabaseTest()">Start db creation test</button><br>
+
 	<ul id="results"></ul>
 	<button onclick="cleanTest()">Clean results</button>
 </body>
