@@ -97,238 +97,232 @@ function readData(lower, upper, db, label) {
 }
 
 function simpleTest() {
-    cleanTest();
-    var openReq = indexedDB.open(dbName, dbVersion);
-    openReq.onupgradeneeded = function (req) {
-        var db = req.target.result;
-        db.createObjectStore(storeName, {autoIncrement: true});
-        log("Created new store: " + storeName);
-    };
-    openReq.onsuccess = function (req) {
-        log("Successfully opened database");
-        var db = req.target.result;
-        var testData1 = randomDataArray(getRepetitions());
-        var testData2 = randomDataArray(getRepetitions());
-        setTimeout(function () { readData(0, Infinity, db, "readTran"); }, 10);
-        setTimeout(function () { writeData(testData2, db, "Tran2"); }, 5);
-        writeData(testData1, db, "Tran1");
-    };
-    openReq.onblocked = function (req) {
-        warn('Database is blocked');
-    };
-    openReq.onerror = function (req) {
-        error('error while opening database');
-    };
+    cleanTest(function(){
+        var openReq = indexedDB.open(dbName, dbVersion);
+        openReq.onupgradeneeded = function (req) {
+            var db = req.target.result;
+            db.createObjectStore(storeName, {autoIncrement: true});
+            log("Created new store: " + storeName);
+        };
+        openReq.onsuccess = function (req) {
+            log("Successfully opened database");
+            var db = req.target.result;
+            var testData1 = randomDataArray(getRepetitions());
+            var testData2 = randomDataArray(getRepetitions());
+            setTimeout(function () { readData(0, Infinity, db, "readTran"); }, 10);
+            setTimeout(function () { writeData(testData2, db, "Tran2"); }, 5);
+            writeData(testData1, db, "Tran1");
+        };
+        openReq.onblocked = function (req) {
+            warn('Database is blocked');
+        };
+        openReq.onerror = function (req) {
+            error('error while opening database');
+        };
+    });
+    
 }
 
 function complexTest () {
-    cleanTest();
-    var openReq = indexedDB.open(dbName, dbVersion);
-    openReq.onupgradeneeded = function (req) {
-        var db = req.target.result;
-        db.createObjectStore(storeName, {autoIncrement: true});
-        log("Created new store: " + storeName);
-    };
-    openReq.onsuccess = function (req) {
-        log("Successfully opened database");
-        var db = req.target.result;
-        var testCount = getRepetitions();
-        var tranCount = 0;
-        var writer1 = setInterval(function () {
-            writeData(randomDataArray(1), db, "writeTran1");
-            if (tranCount++ > testCount) {
-                clearInterval(writer1);
-                clearInterval(reader);
-                log("---------------------------------------End writer 1---------------------------");
-            }
-        }, 100);
-        var writer2 = setInterval(function () {
-            writeData(randomDataArray(1), db, "writeTran2");
-            if (tranCount++ > testCount) {
-                clearInterval(writer2);
-                clearInterval(reader);
-                log("---------------------------------------End writer 2---------------------------");
-            }
-        }, 120);
-        var reader = setInterval(function () { readData(0, Infinity, db, "readTran"); }, 150);
-    };
-    openReq.onblocked = function (req) {
-        warn('Database is blocked');
-    };
-    openReq.onerror = function (req) {
-        error('Error while opening database');
-    };
+    cleanTest(function(){
+        var openReq = indexedDB.open(dbName, dbVersion);
+        openReq.onupgradeneeded = function (req) {
+            var db = req.target.result;
+            db.createObjectStore(storeName, {autoIncrement: true});
+            log("Created new store: " + storeName);
+        };
+        openReq.onsuccess = function (req) {
+            log("Successfully opened database");
+            var db = req.target.result;
+            var testCount = getRepetitions();
+            var tranCount = 0;
+            var writer1 = setInterval(function () {
+                writeData(randomDataArray(1), db, "writeTran1");
+                if (tranCount++ > testCount) {
+                    clearInterval(writer1);
+                    clearInterval(reader);
+                    log("---------------------------------------End writer 1---------------------------");
+                }
+            }, 100);
+            var writer2 = setInterval(function () {
+                writeData(randomDataArray(1), db, "writeTran2");
+                if (tranCount++ > testCount) {
+                    clearInterval(writer2);
+                    clearInterval(reader);
+                    log("---------------------------------------End writer 2---------------------------");
+                }
+            }, 120);
+            var reader = setInterval(function () { readData(0, Infinity, db, "readTran"); }, 150);
+        };
+        openReq.onblocked = function (req) {
+            warn('Database is blocked');
+        };
+        openReq.onerror = function (req) {
+            error('Error while opening database');
+        };
+    });
 }
 
 function readWriteTest() {
-    cleanTest();
-    var openReq = indexedDB.open(dbName, dbVersion);
-    openReq.onupgradeneeded = function (req) {
-        var db = req.target.result;
-        db.createObjectStore(storeName, {autoIncrement: true});
-        log("Created new store: " + storeName);
-    };
-    openReq.onsuccess = function (req) {
-        log("Successfully opened database");
-        var db = req.target.result;
-        var data = [],
-            testCount = getRepetitions(),
-            tranCount = 0;
-        var writer1 = setInterval(function () {
-            var label = "writer1",
-                dataToPush = randomData(1000);
-            var tran = db.transaction(storeName, "readwrite");
-            tran.onerror = function () { error(label + ": error during transaction"); };
-            tran.oncomplete = function () { info(label + ": Transaction completed"); };
-            tran.onabort = function () { error(label + ": Transaction aborted"); };
-            var store = tran.objectStore(storeName);
-            var putReq = store.put(dataToPush);
-            putReq.onsuccess = function () {
-                data.push(dataToPush);
-                log("Successfully added data: " + JSON.stringify(dataToPush));
-            };
-            putReq.onerror = function () { error(label + ": Error while adding data to store"); };
-            if (tranCount++ > testCount) {
-                clearInterval(writer1);
-                writer1 = false;
-                log("----------------------Stop writer1------------------------");
-            }
-        }, 100);
-        var writer2 = setInterval(function () {
-            var label = "writer2",
-                dataToPush = randomData(1000);
-            var tran = db.transaction(storeName, "readwrite");
-            tran.onerror = function () { error(label + ": error during transaction"); };
-            tran.oncomplete = function () { info(label + ": Transaction completed"); };
-            tran.onabort = function () { error(label + ": Transaction aborted"); };
-            var store = tran.objectStore(storeName);
-            var putReq = store.put(dataToPush);
-            putReq.onsuccess = function () {
-                data.push(dataToPush);
-                log("Successfully added data: " + JSON.stringify(dataToPush));
-            };
-            putReq.onerror = function () { error(label + ": Error while adding data to store"); };
-            if (tranCount++ > testCount) {
-                clearInterval(writer2);
-                writer2 = false;
-                log("----------------------Stop writer2------------------------");
-            }
-        }, 120);
-        var reader = setInterval(function () {
-            var label = "reader";
-            var tran = db.transaction(storeName, "readonly");
-            tran.oncomplete = function () { info(label + ": Transaction completed"); };
-            tran.onabort = function () { error(label + ": Transaction aborted"); };
-            tran.onerror = function () { error(label + ": error during transaction"); };
-            var store = tran.objectStore(storeName);
-            var dataIndex = random(data.length);
-            var range = IDBKeyRange.only(dataIndex);
-            var curReq = store.openCursor(range);
-            curReq.onsuccess = function (req) {
-                var cursor = req.target.result;
-                if (cursor) {
-                    item = cursor.value;
-                    log(label + ": Get new row from store: " + item.id + ", " + item.data);
-                    if (data[dataIndex].id == item.id && data[dataIndex].data == item.data) {
-                        log("Data verified");
-                    } else {
-                        error("Data is not corresponding!: " +
-                            JSON.stringify(data[dataIndex]) +
-                            " via " + JSON.stringify(item));
-                    }
-                    cursor["continue"]();
+    cleanTest(function(){
+        var openReq = indexedDB.open(dbName, dbVersion);
+        openReq.onupgradeneeded = function (req) {
+            var db = req.target.result;
+            db.createObjectStore(storeName, {autoIncrement: true});
+            log("Created new store: " + storeName);
+        };
+        openReq.onsuccess = function (req) {
+            log("Successfully opened database");
+            var db = req.target.result;
+            var data = [],
+                testCount = getRepetitions(),
+                tranCount = 0;
+            var writer1 = setInterval(function () {
+                var label = "writer1",
+                    dataToPush = randomData(1000);
+                var tran = db.transaction(storeName, "readwrite");
+                tran.onerror = function () { error(label + ": error during transaction"); };
+                tran.oncomplete = function () { info(label + ": Transaction completed"); };
+                tran.onabort = function () { error(label + ": Transaction aborted"); };
+                var store = tran.objectStore(storeName);
+                var putReq = store.put(dataToPush);
+                putReq.onsuccess = function () {
+                    data.push(dataToPush);
+                    log("Successfully added data: " + JSON.stringify(dataToPush));
+                };
+                putReq.onerror = function () { error(label + ": Error while adding data to store"); };
+                if (tranCount++ > testCount) {
+                    clearInterval(writer1);
+                    writer1 = false;
+                    log("----------------------Stop writer1------------------------");
                 }
-            };
-            curReq.onblocked = function (req) {
-                warn(label + ': Read operation is blocked');
-            };
-            curReq.onerror = function (req) {
-                error(label + ': error while reading data');
-            };
-            if (!writer1 && !writer2) {
-                clearInterval(reader);
-                log("----------------------Stop reader------------------------");
-            }
-        }, 150);
-    };
-    openReq.onblocked = function (req) {
-        warn('Database is blocked');
-    };
-    openReq.onerror = function (req) {
-        error('Error while opening database');
-    };
+            }, 100);
+            var writer2 = setInterval(function () {
+                var label = "writer2",
+                    dataToPush = randomData(1000);
+                var tran = db.transaction(storeName, "readwrite");
+                tran.onerror = function () { error(label + ": error during transaction"); };
+                tran.oncomplete = function () { info(label + ": Transaction completed"); };
+                tran.onabort = function () { error(label + ": Transaction aborted"); };
+                var store = tran.objectStore(storeName);
+                var putReq = store.put(dataToPush);
+                putReq.onsuccess = function () {
+                    data.push(dataToPush);
+                    log("Successfully added data: " + JSON.stringify(dataToPush));
+                };
+                putReq.onerror = function () { error(label + ": Error while adding data to store"); };
+                if (tranCount++ > testCount) {
+                    clearInterval(writer2);
+                    writer2 = false;
+                    log("----------------------Stop writer2------------------------");
+                }
+            }, 120);
+            var reader = setInterval(function () {
+                var label = "reader";
+                var tran = db.transaction(storeName, "readonly");
+                tran.oncomplete = function () { info(label + ": Transaction completed"); };
+                tran.onabort = function () { error(label + ": Transaction aborted"); };
+                tran.onerror = function () { error(label + ": error during transaction"); };
+                var store = tran.objectStore(storeName);
+                var dataIndex = random(data.length);
+                var range = IDBKeyRange.only(dataIndex);
+                var curReq = store.openCursor(range);
+                curReq.onsuccess = function (req) {
+                    var cursor = req.target.result;
+                    if (cursor) {
+                        item = cursor.value;
+                        log(label + ": Get new row from store: " + item.id + ", " + item.data);
+                        if (data[dataIndex].id == item.id && data[dataIndex].data == item.data) {
+                            log("Data verified");
+                        } else {
+                            error("Data is not corresponding!: " +
+                                JSON.stringify(data[dataIndex]) +
+                                " via " + JSON.stringify(item));
+                        }
+                        cursor["continue"]();
+                    }
+                };
+                curReq.onblocked = function (req) {
+                    warn(label + ': Read operation is blocked');
+                };
+                curReq.onerror = function (req) {
+                    error(label + ': error while reading data');
+                };
+                if (!writer1 && !writer2) {
+                    clearInterval(reader);
+                    log("----------------------Stop reader------------------------");
+                }
+            }, 150);
+        };
+        openReq.onblocked = function (req) {
+            warn('Database is blocked');
+        };
+        openReq.onerror = function (req) {
+            error('Error while opening database');
+        };
+    });
 }
-// window.shimIndexedDB.__useShim();
+
 function openDatabaseTest() {
-    // // clean up
-    cleanTest();
-
-    for(var idx = 0; idx < 100; idx++) {
-        cleanDB('testDB-' + idx);
-    }
-    cleanDB('testDB');
-
-    var testCount = getRepetitions();
-
-    function openDatabaseAndWrite(dbToOpen) {
-        dbToOpen = dbToOpen || 'testDatabase';
+    
+    function openWriteDeleteRoundtrip(dbToOpen) {
+        dbToOpen = dbToOpen || dbName;
+        info('Open Write Delete round trip for ' + dbToOpen);
         var db;
         var openReq = indexedDB.open(dbToOpen);
         openReq.onblocked = function (req) {
-            warn('Database is blocked: ' + dbName);
+            warn('Database is blocked: ' + dbToOpen);
         };
         openReq.onerror = function (req) {
-            error('Error while opening database ' + dbName);
+            error('Error while opening database ' + dbToOpen);
         };
         openReq.onupgradeneeded = function(event) {
+            log('onupgradeneeded: ' + dbToOpen + '; storename: ' + storeName);
             var db = event.target.result;
-            // TODO - potential issue
             db.createObjectStore(storeName, {autoIncrement: true});
-
         };
         openReq.onsuccess = function(event) {
-          db = openReq.result;
-          log(dbToOpen + ' has been successfully created/opened');
-          var dataToPush = randomData(1000);
-          var label = dbToOpen;
-          var tran = db.transaction(storeName, "readwrite");
+            db = openReq.result;
+            log(dbToOpen + ' has been successfully created/opened');
+            var dataToPush = randomData(1000);
+            var label = dbToOpen;
+            var tran = db.transaction(storeName, "readwrite");
+            
             tran.onerror = function () { error(label + ": error during transaction"); };
-            tran.oncomplete = function () { info(label + ": Transaction completed"); 
-                try{
-                    log('cleanDB');
-                    cleanDB(dbToOpen);
-                } catch(ex) {
-                    log('Error: ' + ex);
-                }
+            tran.onabort = function () { error(label + ": Transaction aborted"); };
+            tran.oncomplete = function () { 
+                log(label + ": Transaction completed"); 
+                log(label + ": attempt to delete db");
+                db.close();
+                cleanDB(dbToOpen, function() {
+                    log(label + ": db has been successfully deleted");
+                });
             };
 
-            tran.onabort = function () { error(label + ": Transaction aborted"); };
             var store = tran.objectStore(storeName);
             var putReq = store.put(dataToPush);
-            putReq.onsuccess = function () {
-                log("Successfully added data: " + JSON.stringify(dataToPush));
-            };
             putReq.onerror = function () { error(label + ": Error while adding data to store"); };
+            putReq.onsuccess = function () {
+                 log("Successfully added data: " + JSON.stringify(dataToPush));
+            };
         };
     };
 
-    log("Test unique DB creation + write data");
-    // different databases
-    for(var idx = 0; idx < testCount; idx++) {
-        var uniquedbName = 'testDB-' + idx;
-        //console.log(uniquedbName);
-        //setTimeout(function(){
-            openDatabaseAndWrite(uniquedbName);
-        //},0);
-    }
+    // clean up
+    cleanTest(function(){
+        var testCount = getRepetitions();
+        var handler = setInterval(function(){
 
-    log("Test creation of the same DB + write data");
-    // sane databases
-    // for(var idx = 0; idx < testCount; idx++) {
-    //     setTimeout(function(){
-    //         openDatabaseAndWrite('testDB');
-    //     },0);
-    // }
+            if (--testCount < 0) {
+                clearInterval(handler);
+                return;
+            }
+
+            openWriteDeleteRoundtrip();
+            //openWriteDeleteRoundtrip("uniqdb#" + testCount);
+
+        }, 2000)
+    });
 }
 
 function cleanDB (dbToClean, onCompleted) {
@@ -339,16 +333,18 @@ function cleanDB (dbToClean, onCompleted) {
     };
     delReq.onblocked = function (req) {
         log(dbToClean + ": Database is blocked");
+        onCompleted && onCompleted();
     };
     delReq.onerror = function (req) {
         log(dbToClean + ": error when deleting database");
+        onCompleted && onCompleted();
     };
 }
 
-function cleanTest () {
+function cleanTest (onCompleted) {
     var res = document.getElementById('results');
     while (res.firstChild) {
         res.removeChild(res.firstChild);
     }
-    cleanDB(dbName)
+    cleanDB(dbName, onCompleted)
 }
